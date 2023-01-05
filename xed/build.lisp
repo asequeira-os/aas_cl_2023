@@ -1,0 +1,10 @@
+(aas-build:compile-load-files
+ '("package"
+   "xed-core"
+   "cal-db"
+   "cal-entry-pre"
+   "recur"
+   "cal-entry-db"
+   "entry-rpc"
+   "recur-test"
+   "xed-test"))

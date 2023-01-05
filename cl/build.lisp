@@ -1,0 +1,11 @@
+(aas-build:compile-load-files
+ '("package"
+   "case-ext"
+   "base"
+   "comparison"
+   "decimal"
+   "threads"
+   "random"
+   "util"
+   "trace"
+   "test"))

@@ -1,0 +1,58 @@
+(in-package :aas-misc)
+
+;;internal test function
+(defun test-queue (count)
+  (let ((q (make-queue)))
+    (aseq-test:is (empty-queue-p q))
+    (dotimes (i count)
+      (enqueue q i))
+    (dotimes (i count)
+      (let ((j (dequeue q)))
+        (aseq-test:is (= j i))))
+    (aseq-test:is (empty-queue-p q))
+    (dequeue q)
+    (aseq-test:is (empty-queue-p q))
+    (enqueue q 'x)
+    (aseq-test:is (eq 'x (dequeue q)))
+    (aseq-test:is (empty-queue-p q))))
+
+(aseq-test:deftest aas-misc-queue-1
+  (test-queue 3)
+  (test-queue 1)
+  (test-queue 300)
+  (empty-queue-test)
+  (queue-iterate-test))
+
+(aseq-test:deftest queue-iterate-test
+  (let ((eq (make-queue)))
+    (iterate-queue eq (lambda (x)
+                        (declare (ignorable x))
+                        (error " should not be called on empty queue"))))
+  (let ((q1 (make-queue))
+        (got1 0))
+    (enqueue q1 1)
+    (iterate-queue q1 (lambda (x)
+                        (setf got1 x)))
+    (aseq-test:is (= 1 got1)))
+  (let ((q12345 (make-queue))
+        (l1 (list))
+        (l2 (list)))
+    (loop for i from 1 to 5 do
+         (enqueue q12345 i))
+    (iterate-queue q12345 (lambda (x)
+                            (push x l1)))
+    (dequeue q12345)
+    (iterate-queue q12345 (lambda (x)
+                            (push x l2)))
+    (aseq-test:is (equal '(1 2 3 4 5) (nreverse l1)))
+    (aseq-test:is (equal '(2 3 4 5) (nreverse l2)))))
+
+(aseq-test:deftest empty-queue-test
+  (let ((eq (make-queue)))
+    (aseq-test:is (eq eq (empty-queue eq)))
+    (let ((q12345 (make-queue)))
+      (loop for i from 1 to 5 do
+           (enqueue q12345 i))
+      (aseq-test:is-not (empty-queue-p q12345))
+      (empty-queue q12345)
+      (aseq-test:is (empty-queue-p q12345)))))

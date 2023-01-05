@@ -1,0 +1,122 @@
+#+STARTUP: showall
+* go live needs
+need SSL cert (needed anyway)
+estimate cost for wild card SSL cert
+merchant bank account that allows  internet transactions
+e-commerce (Card Not Present) Authorize.Net Payment Gateway account.
+
+** authorize .net a/c requires
+SSN OR tax id
+bank a/c and credit card
+name
+address
+title
+phone number
+email address
+
+sign up for their fraud detection service to limit the number of allowed transactions per day (they call it the velocity filter)
+
+
+
+* info
+
+https://account.authorize.net is a secure Web site where merchants can manage their payment gateway account
+http://www.authorize.net/support/merchant/ for information on managing the merchant’s payment gateway integration using the Merchant Interface.
+Transaction settings submitted in the transaction request will override transaction settings configured in the Merchant Interface.
+test account http://developer.authorize.net/testaccount
+
+api calls url
+https://secure.authorize.net/gateway/transact.dll
+test api calls url
+https://test.authorize.net/gateway/transact.dll
+error generation
+http://www.authorize.net/files/ErrorGenerationGuide.pdf
+
+credentials are in pswd file
+sandbox UI is at
+https://sandbox.authorize.net/
+
+test CC #s
+- American Express Test Card: 370000000000002
+- Discover Test Card: 6011000000000012
+- Visa Test Card: 4007000000027
+- Second Visa Test Card: 4012888818888
+- JCB: 3088000000000017
+- Diners Club/ Carte Blanche: 38000000000006
+
+
+
+* minimum fields
+x_login merchant's api login id
+x_tran_key merchant transaction key (generated in merchant interface like pin)
+X_type AUTH_CAPTURE (default), AUTH_ONLY, CAPTURE_ONLY, CREDIT, PRIOR_AUTH_CAPTURE, VOID (capture means charge, auth means authorize)
+x_amount
+x_card_num
+x_exp_date MM/YYYY
+x_trans_id for CREDIT, PRIOR_AUTH_CAPTURE, and VOID transactions
+x_relay_response FALSE
+x_delim_data TRUE
+x_delim_char single char
+
+** other fields
+x_version 3.1
+x_method CC
+x_card_code CCV number
+x_test_request TRUE to treat transaction as test
+x_duplicate_window some number between 0 and 28800. seconds to block duplicates
+x_invoice_num any arbitrary number
+x_description arbitrary text upto 255 chars
+x_first_name cust first name upto 50 char
+x_last_name 50 char
+x_company customer's company name (not mine)
+x_address 60 chars. required for AVS
+x_city 40 char
+x_state 2 char code or 40 char
+x_zip 20 char required for avs
+x_country 60chars
+x_phone 25 digits
+x_cust_id 20 chars(no symbols) whatever I assign to my customer
+
+* response fields
+Response Code 1 = Approved
+ 2 = Declined
+ 3 = Error
+ 4 = Held for Review
+see pp 37 for the rest
+
+
+* dev notes
+create invoice number
+ask paying customers for their company name
+pick x_delim_char dynamically to ensure no conflict with data?
+but they allow for x_encap_char to quote
+need to store authorization code received
+need to store transaction ID
+when duplicate is detected the payment gateway response will contain the response code of 3 (processing error) with a response reason code of 11 (duplicate transaction). additional details will be present only if transaction included x_duplicate_window
+response fields are by position. use 3.1 and see table for field numbers
+need to design for this
+
+do not pass on reason text for denial until proper filtering is in place
+need to store response code and response reason code to understand/diagnoze. see pp47
+
+new accounts are placed in test mode by default
+
+live testing can be done by making a small 0.01 amount transaction and quickly going to the 'unsettled transactions' page on the 'merchant interface' and voiding them
+visa veification might allows 0.00 amount
+
+test data use CC number 4222222222222
+set amount to the response reason code you would like to produce
+For example, to test the AVS response reason code number 27, submit the test transaction with the credit card number “4222222222222” and the amount “27.00.”
+It is not possible to test the AVS or CCV responses in the developer test environment.need to use the real trans and 'unsettled transactions' page.
+
+
+test url
+https://test.authorize.net/gateway/transact.dll?x_login=6uULkjz866V&x_tran_key=3fRnBFuT43uz2574&X_type=AUTH_CAPTURE&x_amount=123.78&x_card_num=4007000000027&x_exp_date=10/2011&x_relay_response=FALSE&x_delim_data=TRUE&x_delim_char=,&x_encap_char="
+
+https://test.authorize.net/gateway/transact.dll?x_login=6uULkjz866V&x_tran_key=3fRnBFuT43uz2574&X_type=AUTH_CAPTURE&x_amount=123.00&x_card_num=4222222222222&x_exp_date=10/2011&x_relay_response=FALSE&x_delim_data=TRUE&x_delim_char=,
+
+* implementation ideas
+create gateway vendors and config data for each vendor
+have a generic interface definition
+implement it for Virtual Merchant
+

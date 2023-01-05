@@ -1,0 +1,16 @@
+(aas-build:compile-load-files
+ '("package"
+   "captcha"
+   "auth-ext-pre"
+   "auth-base"
+   "auth-login"
+   "auth-ext"
+   "pswd-reset"
+   "user-profile-pre"
+   "user-profile"
+   "test-helper"
+   "aclgroup/build"
+   "company/build"
+   "test-profile"
+   "test-guid-user"
+   "test"))

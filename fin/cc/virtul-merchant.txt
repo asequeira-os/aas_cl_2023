@@ -1,0 +1,154 @@
+#+STARTUP: showall
+looking at
+https://www.myvirtualmerchant.com/VirtualMerchant/download/developerGuide.pdf
+
+need to collect address and zip code
+says should not store CVV info
+
+basic data - card number, expiration date, amount
+need customer address and billing address
+
+see follow on transactions pp 17 (seems to allow non sale only)
+
+
+
+
+* integration
+allows https
+process.do is the key/value format
+allows get and post
+** test account
+see pp 22 for getting test account
+internetproductsupport@merchantconnect.com
+they need : Company Name Primary Contact Name Primary Contact Phone Primary E-mail Address
+they give VID, user ID and user password
+admin terminal at
+https://demo.myvirtualmerchant.com/VirtualMerchantDemo/login.do
+VID keeps transactions separated by integrator
+Integrator can then retrieve a unique PIN that can be used to send transactions via the API
+Each account can have one Merchant Admin user and can have multiple Employee Users, who may or may not have access to run transactions.
+
+
+** variables
+ssl_txn_id transaction number
+ssl_show_form false (unless I want them to collect info on their site)
+ssl_merchant_id (referred to as your Account ID or Virtual Merchant ID)
+ssl_user_id When ssl_user_id is omitted, the User ID is assumed to be the same as the ssl_merchant_id, the merchant Admin User.
+ssl_pin
+ssl_transaction_type
+ssl_amount
+ssl_card_number
+ssl_exp_date
+
+** transactions
+see
+https://www.myvirtualmerchant.com/VirtualMerchant/test_tran.do
+https://www.myvirtualmerchant.com/VirtualMerchant/process.do
+
+setting
+ssl_test_mode=false
+allows testing that always return approved
+ssl_first_name
+ssl_last_name
+ssl_city
+ssl_state
+ssl_phone
+*** sale
+**** request variables
+ssl_merchant_id=xxxxxx
+ssl_user_id=xxxxxx
+ssl_pin=xxxxxx
+ssl_show_form=false
+ssl_result_format=ascii -- a list of key/value pairs will be returned, and the other receipt related parameters you have sent will be ignored
+ssl_card_number=5000300020003003
+ssl_exp_date=1208
+ssl_amount=1.0
+ssl_transaction_type=CCSALE
+ssl_cvv2cvc2_indicator=1
+ssl_cvv2cvc2=123
+**** response variables
+ssl_card_number=50********3003
+ssl_exp_date=1208
+ssl_amount=1.02
+ssl_customer_code=
+ssl_salestax=
+ssl_invoice_number=
+ssl_result=0  -- 0 approved , 1 declined (anything other than 0 is a failure)
+ssl_result_message=APPROVED -- check status message
+ssl_txn_id=1252E7696-A94F-9A37-4235-48A287CFEC68
+ssl_approval_code=N15032
+ssl_cvv2_response=
+ssl_avs_response=
+ssl_account_balance=0.00
+ssl_txn_time=08/17/2008 10:15:59 AM (Format: MM/DD/YYYY hh:mm:ss PM/AM)
+errorCode
+errorName
+errorMessage
+
+*** avs only
+might be interesting to do an avs only on account opening during beta period
+ssl_transaction_type=CCAVSONLY
+ssl_merchant_id
+ssl_pin
+ssl_user_id
+ssl_card_number
+ssl_exp_date
+ssl_card_present=N
+ssl_avs_address
+ssl_avs_zip
+*** cedit
+**** request variables
+ssl_transaction_type=CCCREDIT
+ssl_show_form=false
+ssl_merchant_id=xxxxxx
+ssl_user_id=xxxxxx
+ssl_pin=xxxxxx
+ssl_result_format=ascii -- a list of key/value pairs will be returned, and the other receipt related parameters you have sent will be ignored
+ssl_card_number=5000300020003003
+ssl_exp_date=1208
+ssl_amount=1.0
+**** response
+see sale
+*** voiding
+**** request variables
+ssl_transaction_type=CCVOID
+ssl_merchant_id=xxxxxx
+ssl_user_id=xxxxxx
+ssl_pin=xxxxxx
+ssl_txn_id=
+ssl_result_format=ascii -- i added this
+*** response
+see sale
+
+
+*** todo parsing ssl_cvv2_response ssl_avs_response errorCode errorName errorMessage
+AVS response codes pp 96/106 comes in ssl_avs_response
+errorCode see pp 85/92
+authorization response codes pp 94/101 two alphabets - where do these come
+CVV2 codes see 97/104 comes in ssl_cvv2_response
+
+
+*** todo what about ssl_address2 ssl_city ssl_state ssl_country
+
+* security notes
+From pp 79/71
+"Setting up HTTP Referrers in the Administration website tells Virtual Merchant to only accept transactions from a pre-approved list of websites."
+means I should set this up and send that as the 'referrer' http header
+make sure this is a funny url that no one can duplicate on a customer browser
+Auto Pend – We recommend that you use the Auto-Pend feature for any account that is set to Auto-Settle
+create normal a/c for day to day use and use admin a/c sparingly
+Log payment application activity.
+Cardholder data must never be stored on a server connected to the Internet.
+
+
+
+* acronyms
+PIN personal identification number
+CVV/CSC/CVD/CVV2/CVVC/CCV card security/verification code (code value)(data)
+AVS Address verification system (card holders billing address)
+** transaction types
+CCSALE credit card sale transaction
+CCAUTHONLY Auth Only
+CCAVSONLY AVS Only
+CCCREDIT Credit
+CNP card not present

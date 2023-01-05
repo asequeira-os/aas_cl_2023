@@ -1,0 +1,12 @@
+(aas-build:compile-load-files
+ '("package"
+   "json"
+   "rpc-struct"
+   "rpc"
+   "host-trust"
+   "json-rpc-2"
+   "batch"
+   "test-base"
+   "json-rpc-test"
+   "rpc-struct-test"
+   "test"))

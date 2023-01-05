@@ -1,0 +1,27 @@
+#aliases for xeduler use
+#add Link records here to define any timezone names we want
+#so we can show names the  way we want
+
+Link      Etc/UTC                 UTC
+
+#US legal zones
+Link      America/Anchorage       US/Alaska_Standard_Time
+Link      America/Chicago         US/Central_Standard_Time
+Link      America/Denver          US/Mountain_Standard_Time
+Link      America/Los_Angeles     US/Pacific_Standard_Time
+Link      America/New_York        US/Eastern_Standard_Time
+Link      Pacific/Guam            US/Guam
+Link      Pacific/Honolulu        US/Hawaii_Standard_Time
+Link      Pacific/Pago_Pago       US/Samoa
+
+#Canadian zones
+Link      America/Vancouver     Canada/Pacific_Standard_Time
+Link      America/Dawson_Creek  Canada/Mountain_Standard_Time_(No_DST)
+Link      America/Edmonton      Canada/Mountain_Standard/Daylight_Time
+Link      America/Regina        Canada/Central_Standard_Time_(No_DST)
+Link      America/Winnipeg      Canada/Central_Standard/Daylight_Time
+Link      America/Atikokan      Canada/Eastern_Standard_Time_(No_DST)
+Link      America/Toronto       Canada/Eastern_Standard/Daylight_Time
+Link      America/Blanc-Sablon  Canada/Atlantic_Standard_Time_(No_DST)
+Link      America/Montreal      Canada/Atlantic_Standard/Daylight_Time
+Link      America/St_Johns      Canada/Newfoundland_Standard/Daylight_Time

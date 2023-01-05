@@ -1,0 +1,232 @@
+(in-package :aas-local-time-test)
+
+(aseq-test:deftest all-date-time-tests
+  (and (aas-local-time-test-1)
+       (aas-local-time-test-2)
+       (aas-local-time-test-3)
+       (test-5)
+       (aas-local-time-dto-compare)
+       (aas-local-time-test-print)
+       (aas-local-time-test-4)))
+
+(aseq-test:deftest aas-local-time-test-1
+  (let ((data '((0 0 0 0 0)
+                (59 59 0 0 0)
+                (60 0 1 0 0)
+                (61 1 1 0 0)
+                (120 0 2 0 0)
+                (119 59 1 0 0)
+                (3600 0 0 1 0)
+                (3601 1 0 1 0)
+                (3662 2 1 1 0)
+                (86400 0 0 0 1))))
+    (dolist (test-case data)
+      (multiple-value-bind (seconds minutes hours days)
+          (break-seconds (first test-case))
+        (aseq-test:is (and (= seconds (second test-case))
+                           (= minutes (third test-case))
+                           (= hours (fourth test-case))
+                           (= days (fifth test-case))))))))
+
+(defun test-days (month year)
+  (let ((days (list 1 2 10 27 28)))
+    (unless (= month 2)
+      (setf days (append days (list 29 30))))
+    (when (= 31 (days-in-month year month))
+      (setf days (append days (list 31))))
+    (when (and (= month 2) (is-leap-year-test year))
+      (setf days (append days (list 29))))
+    days))
+
+(aseq-test:deftest aas-local-time-test-2
+  (let* ((leap-years (list 2012 2020 2048))
+         (non-leap-years (list  2014 2038 2049))
+         (hours '(0 1 2 3 11 12 13 22 23))
+         (seconds (list 0 1 58 59))
+         (minutes seconds)
+         (offset-minutes-list (list (+ (* 5 60) 30) ; India
+                                    (* 25 60)(* 24 60)(* 23 60)
+                                    (* 13 60)(* 12 60)(* 11 60)
+                                    (* 2 60)(* 1 60) 0
+                                    (* -25 60)(* -24 60)(* -23 60)
+                                    (* -13 60)(* -12 60)(* -11 60)
+                                    (* -2 60)(* -1 60)))
+         (years (concatenate 'list leap-years non-leap-years)))
+    (dolist (year leap-years)
+      (aseq-test:is (is-leap-year-test year)))
+    (dolist (year non-leap-years)
+      (aseq-test:is (not (is-leap-year-test year))))
+    (dolist (offset-minutes offset-minutes-list)
+      (dolist (year years)
+        (do ((month 1 (incf month)))
+            ((= month 13))
+          (dolist (day (test-days month year))
+            (let ((dow
+                   (seventh (multiple-value-list
+                             (decode-universal-time
+                              (encode-universal-time  0 0 0 day month year) 0)))))
+              (dolist (hour hours)
+                (dolist (minute minutes)
+                  (dolist (second seconds)
+                    (let ((obj (make-date-time second minute hour day
+                                               month year
+                                               (* 60 offset-minutes))))
+                      (aseq-test:is (= (dto-day-of-week obj) dow))
+                      (let ((obj-2 (days-seconds-to-date-time
+                                    (dto-days-utc obj)
+                                    (dto-seconds-utc obj)
+                                    (* 60 offset-minutes))))
+                        (aseq-test:is (equalp obj obj-2))))))))))))))
+
+;;valid date time are already tested in aas-local-time-test-2
+;;this tests invalid combinations
+(aseq-test:deftest aas-local-time-test-3
+  (aseq-test:is
+   (not
+    (or
+     (is-valid-date-time -1 0 0 1 1 2002)
+     (is-valid-date-time 60 0 0 1 1 2002)
+     (is-valid-date-time 0 -10 0 1 1 2002)
+     (is-valid-date-time 0 60 0 1 1 2002)
+     (is-valid-date-time 0 0 25 1 1 2002)
+     (is-valid-date-time 0 0 24 1 1 2002)
+     (is-valid-date-time 0 0 -1 1 1 2002)
+     (is-valid-date-time 0 0 0 33 1 2002)
+     (is-valid-date-time 0 0 0 32 1 2002)
+     (is-valid-date-time 0 0 0 29 2 2002)
+     (is-valid-date-time 0 0 0 30 2 2004)
+     (is-valid-date-time 0 0 0 1 -1 2002)
+     (is-valid-date-time 0 0 0 1 0 2002)
+     (is-valid-date-time 0 0 0 1 13 2002)
+     (is-valid-date-time 0 0 0 1 1 2102)))))
+
+(aseq-test:deftest aas-local-time-test-4
+  (let ((dt1 (make-date-time 0 0 0 1 1 2014 0))
+        (dt2 (make-date-time 0 0 0 1 1 2015 0))
+        (dt3 (make-date-time 0 0 0 2 1 2014 0))
+        (dt4 (make-date-time 0 0 1 1 1 2014 0))
+        (dt5 (make-date-time 0 0 0 1 1 2017 0)))
+    (let ((df2-1 (date-difference dt2 dt1))
+          (df1-2 (date-difference dt1 dt2))
+          (df2-3 (date-difference dt2 dt3))
+          (df3-2 (date-difference dt3 dt2))
+          (df4-1 (date-difference dt4 dt1))
+          (df1-4 (date-difference dt1 dt4))
+          (df5-1 (date-difference dt5 dt1))
+          (df1-5 (date-difference dt1 dt5)))
+      (aseq-test:is (= 365 (dur-days df2-1)))
+      (aseq-test:is (= -365 (dur-days df1-2)))
+      (aseq-test:is (= 364 (dur-days df2-3)))
+      (aseq-test:is (= -364 (dur-days df3-2)))
+      (aseq-test:is (= 1 (dur-hours df4-1)))
+      (aseq-test:is (= 1096 (dur-days df5-1)))
+      (aseq-test:is (= -1096 (dur-days df1-5)))
+      (aseq-test:is (and (= 23 (dur-hours df1-4))
+                         (= -1 (dur-days df1-4)))))))
+
+(aseq-test:deftest aas-local-time-dto-compare
+  (let ((year 2012)
+        (month 3)
+        (day 10)
+        (hour 7)
+        (minute 10)
+        (second 3))
+    (let ((dto1 (make-date-time second minute hour
+                                day month year))
+          (dto2 (make-date-time second (1+ minute) hour
+                                day month year))
+          (dto3 (make-date-time second minute hour
+                                (1+ day) month year))
+          (dto4 (make-date-time second (1+ minute) hour
+                                (1+ day) month year)))
+      (aseq-test:is (dto< dto1))
+      (aseq-test:is-not (dto< dto1 dto1))
+      (aseq-test:is (dto< dto1 dto2))
+      (aseq-test:is (dto< dto1 dto2 dto3))
+      (aseq-test:is (dto< dto1 dto2 dto3 dto4))
+      (aseq-test:is-not (dto< dto2 dto1))
+      (aseq-test:is-not (dto< dto3 dto2 dto1))
+      (aseq-test:is-not (dto< dto4 dto3 dto2 dto1))
+
+      (aseq-test:is (dto> dto1))
+      (aseq-test:is-not (dto> dto1 dto1))
+      (aseq-test:is-not (dto> dto1 dto2))
+      (aseq-test:is-not (dto> dto1 dto2 dto3))
+      (aseq-test:is-not (dto> dto1 dto2 dto3 dto4))
+      (aseq-test:is (dto> dto2 dto1))
+      (aseq-test:is (dto> dto3 dto2 dto1))
+      (aseq-test:is (dto> dto4 dto3 dto2 dto1))
+
+      (aseq-test:is (dto= dto1))
+      (aseq-test:is (dto= dto1 dto1))
+      (aseq-test:is-not (dto= dto1 dto2))
+      (aseq-test:is (dto= dto1 dto1 dto1))
+      (aseq-test:is-not (dto= dto1 dto1 dto2))
+
+      ;;(aseq-test:is (dto/= dto1))
+      ;; (aseq-test:is-not (dto/= dto1 dto1))
+      ;; (aseq-test:is (dto/= dto1 dto2))
+      ;; (aseq-test:is-not (dto/= dto1 dto1 dto1))
+      ;; (aseq-test:is (dto/= dto1 dto1 dto2))
+
+      (aseq-test:is (dto>= dto1))
+      (aseq-test:is (dto>= dto1 dto1))
+      (aseq-test:is-not (dto>= dto1 dto2))
+      (aseq-test:is-not (dto>= dto1 dto2 dto3))
+      (aseq-test:is-not (dto>= dto1 dto2 dto3 dto4))
+      (aseq-test:is (dto>= dto2 dto1))
+      (aseq-test:is (dto>= dto3 dto2 dto1))
+      (aseq-test:is (dto>= dto4 dto3 dto2 dto1))
+
+      (aseq-test:is (dto<= dto1))
+      (aseq-test:is (dto<= dto1 dto1))
+      (aseq-test:is (dto<= dto1 dto2))
+      (aseq-test:is-not (dto<= dto1 dto2 dto3 dto1))
+      (aseq-test:is (dto<= dto1 dto2 dto3 dto4))
+      (aseq-test:is-not (dto<= dto2 dto1))
+      (aseq-test:is-not (dto<= dto3 dto2 dto1 dto1))
+      (aseq-test:is-not (dto<= dto4 dto3 dto2 dto1 dto2)))))
+
+(defun test-print (fmt dto printed)
+  (let ((s (with-output-to-string (s)
+             (format s fmt dto))))
+    (unless (string-equal printed s)
+      (format t "failing equal ~A to ~A" printed s))
+    (aseq-test:is (string-equal printed s))))
+
+(aseq-test:deftest aas-local-time-test-print
+  (test-print "~A" (make-date-time 1 1 1 29 5 2012 28823)
+              "#<2012/05/29 01:01:01+08:00>#")
+  (test-print "~A" (make-date-time 1 1 1 29 5 2012 -28823)
+              "#<2012/05/29 01:01:01-08:00>#")
+  (test-print "~A" (make-date-time 1 1 1 29 5 2012 28923)
+              "#<2012/05/29 01:01:01+08:02>#")
+  (test-print "~A" (make-date-time 1 1 1 29 5 2012 -28923)
+              "#<2012/05/29 01:01:01-08:02>#")
+  (test-print "~A" (make-date-time 12 13 14 29 5 2012 -28923)
+              "#<2012/05/29 14:13:12-08:02>#")
+  (test-print "~A" (make-date-time 12 13 14 29 5 2012 )
+              "#<2012/05/29 14:13:12+00:00>#")
+  (let ((*package* #.*package*))
+    (test-print "~S" (make-date-time 1 2 3 29 5 2012 -28800)
+                "#S(DTO :DAYS-UTC 514 :SECONDS-UTC 39721 :YEAR 2012 :MONTH 5 :DAY 29 :HOUR 3 :MINUTE 2 :SECOND 1 :DAY-OF-WEEK 1 :OFFSET -28800)")
+    ;;check conditionals
+    (let ((aas-local-time::*serialize* 1))
+      ;;serialize readably
+      (test-print "~S" (make-date-time 1 2 3 29 5 2012 -28800)
+                  "#S(DTO :DAYS-UTC 514 :SECONDS-UTC 39721 :YEAR 2012 :MONTH 5 :DAY 29 :HOUR 3 :MINUTE 2 :SECOND 1 :DAY-OF-WEEK 1 :OFFSET -28800)")
+      (test-print "~A" (make-date-time 1 1 1 29 5 2012 -28823)
+                  "#<2012/05/29 01:01:01-08:00>#")
+      (with-standard-io-syntax
+        ;;serialize readably print-escape
+        (test-print "~S" (make-date-time 1 2 3 29 5 2012 -28823)
+                    "(make-date-time 1 2 3 29 5 2012 -28823)")
+        (test-print "~A" (make-date-time 1 1 1 29 5 2012 -28823)
+                    "#<2012/05/29 01:01:01-08:00>#")))))
+
+(aseq-test:deftest test-5
+  (let ((u1 (utc-now)))
+    (sleep 2)
+    (let ((u2 (utc-now)))
+      (aseq-test:is (dto< u1 u2)))))
+

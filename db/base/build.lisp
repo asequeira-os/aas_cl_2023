@@ -1,0 +1,10 @@
+(aas-build:compile-load-files
+ '("package"
+   "postgres"
+   "core"
+   "table-2"
+   "test"
+   "test-table-pre"
+   "test-table"
+   "test-fk"
+   ))

@@ -1,0 +1,46 @@
+(in-package :aas-http-common)
+
+(define-constant +http-default-port+ 80)
+(define-constant +https-default-port+ 443)
+
+(defvar *default-external-format* :utf-8)
+(setf drakma:*drakma-default-external-format* *default-external-format*)
+
+(defun is-default-port (protocol port)
+  (or (and (equal protocol "http") (= port +http-default-port+))
+      (and (equal protocol "https") (= port  +https-default-port+))))
+
+(defun url-encode (s &optional (encoding *default-external-format*))
+  (drakma:url-encode s encoding))
+
+(defun make-base-url (protocol port host path)
+  "path is not url encoded by this function (causes issues with /)"
+  (with-output-to-string (s)
+    (if (or (equal protocol "http") (equal protocol "https"))
+        (princ protocol s)
+        (error "unsupported protocol ~A" protocol))
+    (princ "://" s)
+    (if (and host (> (length host) 3))
+        (princ host s)
+        (error "needs host"))
+    (if (is-default-port protocol port)
+        (princ "/" s)
+        (format s ":~A/" port))
+    (when (and path (not (equal "/" path)) (> (length path) 1))
+      (princ (if (equal (aref path 0) #\/)
+                 (subseq path 1)
+                 path) s))))
+
+(defun make-full-url(base-url parameters)
+  (let ((parm-part (with-output-to-string (s)
+                     (dolist (cons parameters)
+                       (format s "~A=~A&"
+                               (url-encode (car cons))
+                               (url-encode (cdr cons)))))))
+    (if (alexandria:ends-with #\? base-url)
+        (format nil "~A~A" base-url parm-part)
+        (if (alexandria:ends-with #\& base-url)
+            (format nil "~A~A" base-url parm-part)
+            (if (find #\? base-url)
+                (format nil "~A&~A" base-url parm-part)
+                (format nil "~A?~A" base-url parm-part))))))

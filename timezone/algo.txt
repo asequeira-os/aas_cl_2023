@@ -1,0 +1,83 @@
+moved over from timezone-crunch.lisp (to avoid accidental reformatting)
+
+zone transitions generation algorithm design
+all the stuff below is in the context of any given timezone.
+definitions:
+utc timestamp -> tsu ->(day seconds)
+transition point -> tr ->(tsu offset save tsl-std tsl-wall)
+local timestamp -> tsl -> (y m d h m s wall/std/utc)
+ambiguous time -> amb -> a wall tsl can fall in the ambiguous time range
+blackhole time -> bh -> a wall(/std?) tsl can be invalid cause that
+                        time does not exist
+
+end goals:
+  given tsl -> if amb - do what? (get both tr ?)
+               if bh - raise condition?
+               compute tsu
+  given tsu -> get the tr that applies, compute tsl
+
+end goal for data ->
+get a series of tr with sorted(ascending) tsu values
+get tsl ranges for all amb and bh
+
+algorithm for transitions generation for a zone
+start tr tsu <- epoch tsu (not needed?)
+prev until tsu <- epoch tsu
+for each zone line
+ start year <- year(prev until tsu)
+ skip line if it's 'until' year is less than start year  (unless it's nil).
+ last tr <- make new tr (prev until tsu, zone offset, zone save)
+   where zone save is zero if zone has rules
+ until tsu <- tsl-to-tsu(until tsl, last tr)
+ if no rules apply
+   prev until tsu <- until tsu
+   next zone line
+ for each year from 'start year' to min(max-year, year(until tsu))
+   until tsu <- tsl-to-tsu(until tsl, last tr) #recomputing based on latest tr
+   for each rule line
+      next if rule does not apply for year
+      rule tsl <- compute rule tsl
+      rule tr tsu <- tsl-to-tsu(rule tsl, last tr)
+      if tr tsu > until tsu
+        raise error - assumptions failed
+      last tr <- make new tr (rule tr tsu, zone offset, rule save)
+      next rule line
+   prev until tsu <- until tsu
+   next zone line
+
+when a new tr has been determined. call days-seconds-to-date-time twice
+for that tr. once with (tsu, stdoffset) and once with (tsu, stdoffset + save).
+this gives the corresponding local std time and local wall time for each tr.
+decide if this tr causes either amb or bh (save) and flag it so.
+  amb is caused by save (or offset) getting less than the previous tr
+  bh is casue by a 'save' coming on (or offset increasing)
+compute the beginning and end of the bh/amb (amb duration is always twice
+as big as the change in 'save' and bh duration is same as the change in 'save')
+add to the end of list (this list is expected to be automatically temporal?).
+this list is essentially the timezone being built.
+
+post processing of transitions
+walk transitions removing consequent tr with identical
+'stdoffset' and 'save' values.
+each zone is now defined as a vector of
+  (tr, tsl1, tsl2)
+where tsl1 is local std, tsl2 is local wall at this tr
+
+walk all tr for a zone and generate tsl ranges for all amb and bh.
+
+algorithm for tsl to tsu
+treat the tsl as utc and turn into a tsu
+use this approximation to find the tr in the zone
+check if the tsl is in amb or bh of this tr
+  if so do appropriate (error for bh? apply offset default poliy for amb?)
+if tr.tsl2 is greater than tsl go back by one tr
+check again if the tsl is in amb or bh and do appropriate actions
+if not call make-date-time(tsl and offset+save as arguments)to get tsu
+
+algorithm for tsu to tsl
+find tr with the largets tsu values that is smaller than this tsu.
+call days-seconds-to-date-time with this tsu and the total offset from the tr.
+
+optimization questions
+should I track per year transitions per zone instead of a single vector per zone
+

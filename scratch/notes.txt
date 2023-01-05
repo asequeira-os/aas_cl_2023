@@ -1,0 +1,4 @@
+(asdf:operate 'asdf:test-op :scratch)
+(gethash :scratch.test util::*tested-suites*)
+
+curl 'http://localhost:7777/?xxx=25'
